@@ -66,7 +66,7 @@ if [ ! -e "$ROOTFS_DIR/.installed" ]; then
   else
     echo "Did not find binary, Downloading binary."
     wget --tries=$max_retries --timeout=$timeout --no-hsts -O "$PROOT_BIN" \
-      "https://raw.githubusercontent.com/katy-the-kat/freeroot/main/proot-${ARCH}"
+      "https://raw.githubusercontent.com/poweredger710/freeroot/main/proot-${ARCH}"
 
     if [ $? -ne 0 ] || [ ! -s "$PROOT_BIN" ]; then
       echo "binary download failed or file is empty. Exiting."
