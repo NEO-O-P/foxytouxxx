@@ -1,0 +1,85 @@
+#!/bin/sh
+clear
+printf '\033[1;34mWelcome to umcroot v1.0!\033[0m\n\n'
+rm -f /etc/init/*.log 2>/dev/null
+SERVICES_FOUND=0
+for f in /etc/init/*.sh; do
+  [ -f "$f" ] || continue
+  [ "$(basename "$f")" = "shell.sh" ] && continue
+  SERVICES_FOUND=1
+  service=$(basename "$f" .sh)
+  logfile="/etc/init/${service}.log"
+  sh "$f" >"$logfile" 2>&1 &
+  PID=$!
+  SECONDS_WAITED=0
+  STATUS=""
+  while kill -0 $PID 2>/dev/null; do
+    sleep 1
+    SECONDS_WAITED=$((SECONDS_WAITED+1))
+    if [ $SECONDS_WAITED -ge 5 ]; then
+      kill $PID 2>/dev/null
+      STATUS=0
+      break
+    fi
+  done
+  if [ -z "$STATUS" ]; then
+    wait $PID 2>/dev/null
+    STATUS=$?
+  fi
+  if [ "$STATUS" -eq 0 ]; then
+    printf '\033[34m[*]\033[0m \033[32m%s\033[0m ... \033[32m[OK]\033[0m\n' "$service"
+  else
+    printf '\033[34m[*]\033[0m \033[32m%s\033[0m ... \033[31m[FAIL]\033[0m\n' "$service"
+  fi
+done
+if [ "$SERVICES_FOUND" -eq 0 ]; then
+  printf '\033[33mNo /etc/init/*.sh services found.\033[0m\n'
+fi
+if [ ! -d /etc/init ]; then mkdir -p /etc/init 2>/dev/null; fi
+if [ ! -f /etc/init/shell.sh ]; then
+  printf '%s\n' '#!/bin/sh' 'exit 0' > /etc/init/shell.sh
+  chmod +x /etc/init/shell.sh 2>/dev/null
+fi
+service=shell
+logfile="/etc/init/${service}.log"
+sh "/etc/init/${service}.sh" >"$logfile" 2>&1 &
+PID=$!
+SECONDS_WAITED=0
+STATUS=""
+while kill -0 $PID 2>/dev/null; do
+  sleep 1
+  SECONDS_WAITED=$((SECONDS_WAITED+1))
+  if [ $SECONDS_WAITED -ge 5 ]; then
+    kill $PID 2>/dev/null
+    STATUS=0
+    break
+  fi
+done
+if [ -z "$STATUS" ]; then
+  wait $PID 2>/dev/null
+  STATUS=$?
+fi
+if [ "$STATUS" -eq 0 ]; then
+  printf '\033[34m[*]\033[0m \033[32m%s\033[0m ... \033[32m[OK]\033[0m\n' "$service"
+else
+  printf '\033[34m[*]\033[0m \033[32m%s\033[0m ... \033[31m[FAIL]\033[0m\n' "$service"
+fi
+printf '\n\033[1;33mWelcome to umcroot v1.0! \033[0m\n\n'
+printf 'This was installed by the umcroot install script.\n\n'
+printf 'You can add services by:\n'
+printf ' - Creating a service script: /etc/init/putNamehere.sh\n'
+printf ' - Make it executable: chmod +x /etc/init/putNamehere.sh\n'
+printf ' - Restart init: exec /init\n\n'
+mem=$(free -m 2>/dev/null | awk '/Mem:/ {printf "%d MB used / %d MB total",$3,$2}')
+[ -z "$mem" ] && mem="unknown"
+if command -v df >/dev/null 2>&1; then
+  storage=$(df -h / 2>/dev/null | awk 'NR==2 {printf "%s used / %s total",$3,$2}')
+else
+  storage=""
+fi
+[ -z "$storage" ] && storage="unknown"
+printf 'System Usage:\n'
+printf ' - Memory:  %s\n' "$mem"
+printf ' - Storage: %s\n\n' "$storage"
+printf 'Starting interactive shell...\n'
+exec /bin/sh
